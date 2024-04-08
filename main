@@ -1,0 +1,59 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler, MaxAbsScaler
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.pipeline import Pipeline
+
+# Load the dataset
+data = pd.read_csv("data.csv")
+
+# Separate features and target variable
+X = data['Comment']
+y = data['Emotion']
+
+# Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Define preprocessing techniques
+preprocessors = {
+    "No Preprocessing": None,
+    "Z-score Normalization": StandardScaler(with_mean=False),
+    "MaxAbs Normalization": MaxAbsScaler()
+}
+
+# Define decision tree parameters
+tree_params = {
+    "max_depth": [3, 5, 7, 9, 11],
+    "splitter": ["best", "random"]
+}
+
+best_results = {}
+
+for preprocessor_name, preprocessor in preprocessors.items():
+    best_accuracy = 0.0
+    best_depth = None
+    best_splitter = None
+    for max_depth in tree_params["max_depth"]:
+        for splitter in tree_params["splitter"]:
+            pipeline = Pipeline([
+                ('vectorizer', CountVectorizer()),
+                ('preprocessor', preprocessor),
+                ('classifier', DecisionTreeClassifier(max_depth=max_depth, splitter=splitter, random_state=42))
+            ])
+            pipeline.fit(X_train, y_train)
+            y_pred = pipeline.predict(X_test)
+            accuracy = accuracy_score(y_test, y_pred)
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy
+                best_depth = max_depth
+                best_splitter = splitter
+
+    best_results[preprocessor_name] = {"Best Depth": best_depth, "Best Splitter": best_splitter}
+
+# Create DataFrame
+df_results = pd.DataFrame(best_results)
+
+# Print results
+print(df_results)
