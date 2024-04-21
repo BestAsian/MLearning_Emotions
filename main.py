@@ -8,51 +8,65 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import Pipeline
 
 # Load the dataset
-@st.cache
+@st.cache_data
 def load_data():
-    return pd.read_csv("data.csv")
-
+    return pd.read_csv(".venv/data.csv")
 data = load_data()
-
+reset = 0
 # Separate features and target variable
-X = data['Comment']
-y = data['Emotion']
-
+X = data['text']
+y = data['label']
+# Define emotion labels
+emotion_labels = {0: "Sadness", 1: "Joy", 2: "Love", 3: "Anger", 4: "Fear"}
 # Split data into train and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Define preprocessing techniques
-preprocessors = {
-    "No Preprocessing": None,
-    "Z-score Normalization": StandardScaler(with_mean=False),
-    "MaxAbs Normalization": MaxAbsScaler()
-}
 
 # Define decision tree parameters
 tree_params = {
     "max_depth": [3, 5, 7, 9, 11],
     "splitter": ["best", "random"]
 }
-
-# User interface
 st.title("Emotion Classification")
-
-# Choose preprocessing technique
+preprocessors = {
+    "No Preprocessing": None,
+    "Z-score Normalization": StandardScaler(with_mean=False),
+    "MaxAbs Normalization": MaxAbsScaler()
+}
+# Choose
 preprocessing_choice = st.selectbox("Choose preprocessing technique:", list(preprocessors.keys()))
-
-# Choose decision tree parameters
-max_depth = st.slider("Choose max depth:", min_value=3, max_value=11, value=5, step=1)
+max_depth = st.slider("Choose max depth:", min_value=3, max_value=100, value=5, step=1)
 splitter = st.selectbox("Choose splitter:", ["best", "random"])
 
-# Train decision tree model
-pipeline = Pipeline([
-    ('vectorizer', CountVectorizer()),
-    ('preprocessor', preprocessors[preprocessing_choice]),
-    ('classifier', DecisionTreeClassifier(max_depth=max_depth, splitter=splitter, random_state=42))
-])
+if reset == 0:
+    pipeline = Pipeline([
+        ('vectorizer', CountVectorizer()),
+        ('preprocessor', preprocessors[preprocessing_choice]),
+        ('classifier', DecisionTreeClassifier(max_depth=max_depth, splitter=splitter, random_state=42))
+    ])
+    pipeline.fit(X_train, y_train)
+    reset = 420
+elif st.button("Reset"):
+    pipeline = Pipeline([
+        ('vectorizer', CountVectorizer()),
+        ('preprocessor', preprocessors[preprocessing_choice]),
+        ('classifier', DecisionTreeClassifier(max_depth=max_depth, splitter=splitter, random_state=42))
+    ])
+    pipeline.fit(X_train, y_train)
 
-pipeline.fit(X_train, y_train)
-y_pred = pipeline.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
+if st.button("Calculate Model Accuracy"):
 
-st.write(f"Accuracy: {accuracy:.2f}")
+    y_pred = pipeline.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+
+    st.write(f"Accuracy: {accuracy:.2f}")
+
+st.title("DEMO")
+# Text input for classification
+text_input = st.text_input("Enter text to classify:", "")
+
+# Classify the input text when a button is clicked
+if st.button("Classify"):
+    pipeline.fit(X_train, y_train)
+    prediction = pipeline.predict([text_input])
+    predicted_emotion = emotion_labels[prediction[0]]
+    st.write(f"Predicted Emotion: {predicted_emotion}")
